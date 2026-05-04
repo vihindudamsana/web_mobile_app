@@ -16,16 +16,17 @@ import AdminDashboardScreen  from "../screens/AdminDashboardScreen";
 import AdminOrdersScreen     from "../screens/AdminOrdersScreen";
 import UserManagementScreen  from "../screens/UserManagementScreen";
 
+import { COLORS } from "../constants/Theme";
+
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
   const { isLoggedIn, isAdmin, loading } = useAuth();
 
-  // Show spinner while AsyncStorage loads
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#0a0a0a" }}>
-        <ActivityIndicator size="large" color="#e8ff47" />
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: COLORS.background }}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
@@ -34,9 +35,9 @@ export default function AppNavigator() {
     <NavigationContainer>
       <Stack.Navigator
         screenOptions={{
-          headerShown: false,      // we build our own headers
+          headerShown: false,
           animation: "slide_from_right",
-          contentStyle: { backgroundColor: "#0a0a0a" },
+          contentStyle: { backgroundColor: COLORS.background },
         }}
       >
         {!isLoggedIn ? (

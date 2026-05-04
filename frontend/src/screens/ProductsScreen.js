@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  View, Text, FlatList, TouchableOpacity, Image,
-  StyleSheet, ActivityIndicator, SafeAreaView, Modal,
+  View, Text, FlatList, TouchableOpacity,
+  StyleSheet, ActivityIndicator, SafeAreaView, Modal, StatusBar,
 } from "react-native";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
-import { API_BASE_URL, BASE_URL } from '../config';
+import { API_BASE_URL } from '../config';
+import { COLORS, SPACING, TYPOGRAPHY, BORDER_RADIUS } from '../constants/Theme';
+import { ProductCard } from '../components/ProductCard';
 
 export default function ProductsScreen({ navigation, route }) {
   const { logout } = useAuth();
@@ -17,7 +19,6 @@ export default function ProductsScreen({ navigation, route }) {
 
   useEffect(() => { fetchProducts(); }, []);
 
-  // Handle cart update from ProductDetail
   useEffect(() => {
     if (route.params?.updatedCart) {
       setCart(route.params.updatedCart);
@@ -25,7 +26,6 @@ export default function ProductsScreen({ navigation, route }) {
     }
   }, [route.params?.updatedCart]);
 
-  // Handle return from successful order
   useEffect(() => {
     if (route.params?.orderSuccess) {
       setCart([]);
@@ -51,9 +51,7 @@ export default function ProductsScreen({ navigation, route }) {
     setCart((prev) => {
       const existing = prev.find((i) => i._id === product._id);
       const currentQty = existing?.qty || 0;
-      
       if (currentQty >= product.stock) return prev;
-      
       if (existing) {
         return prev.map((i) => i._id === product._id ? { ...i, qty: i.qty + 1 } : i);
       }
@@ -63,98 +61,24 @@ export default function ProductsScreen({ navigation, route }) {
 
   const cartCount = cart.reduce((sum, i) => sum + i.qty, 0);
 
-  const renderProduct = ({ item }) => {
-    const inCart   = cart.some((i) => i._id === item._id);
-    const cartQty  = cart.find((i) => i._id === item._id)?.qty || 0;
-    const liveStock = item.stock - cartQty;
-    const discount = item.mrp > item.price
-      ? Math.round(((item.mrp - item.price) / item.mrp) * 100)
-      : 0;
-
-    return (
-      <TouchableOpacity
-        style={s.card}
-        onPress={() => navigation.navigate("ProductDetail", { product: item, cart })}
-        activeOpacity={0.85}
-      >
-        {item.image ? (
-          <Image
-            source={{ uri: item.image.startsWith("http") ? item.image : `${BASE_URL}/${item.image}` }}
-            style={s.cardImg}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={s.cardImgPlaceholder}>
-            <Text style={{ fontSize: 40 }}>📦</Text>
-          </View>
-        )}
-
-        <View style={s.cardBody}>
-          <Text style={s.cardTitle} numberOfLines={1}>{item.name || item.title}</Text>
-          <Text style={s.cardDesc} numberOfLines={2}>{item.description}</Text>
-
-          <View style={s.priceRow}>
-            <Text style={s.price}>Rs. {item.price?.toLocaleString()}</Text>
-            {item.mrp > item.price && (
-              <Text style={s.mrp}>Rs. {item.mrp?.toLocaleString()}</Text>
-            )}
-            {discount > 0 && (
-              <View style={s.discountBadge}>
-                <Text style={s.discountText}>{discount}% off</Text>
-              </View>
-            )}
-          </View>
-
-          <Text style={[s.stock, liveStock < 5 && liveStock > 0 && { color: "#cc8800" }]}>
-            {liveStock <= 0 ? "Out of stock" : liveStock < 5 ? `Only ${liveStock} left!` : `${liveStock} in stock`}
-          </Text>
-
-          <TouchableOpacity
-            style={[s.addBtn, liveStock <= 0 && s.addBtnDisabled]}
-            onPress={() => liveStock > 0 && addToCart(item)}
-            disabled={liveStock <= 0}
-          >
-            <Text style={s.addBtnText}>
-              {liveStock <= 0
-                ? inCart ? `In Cart (${cartQty}) - No Stock` : "Out of Stock"
-                : inCart
-                ? `In Cart (${cartQty})`
-                : "Add to Cart"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
   return (
     <SafeAreaView style={s.page}>
+      <StatusBar barStyle="light-content" />
 
-      {/* Order Success Modal */}
-      <Modal visible={orderDone} transparent animationType="fade">
-        <View style={s.modalOverlay}>
-          <View style={s.modalCard}>
-            <Text style={s.modalIcon}>✅</Text>
-            <Text style={s.modalTitle}>Order Placed!</Text>
-            <Text style={s.modalSub}>Your order has been placed successfully.</Text>
-            <TouchableOpacity style={s.modalBtn} onPress={() => setOrderDone(false)}>
-              <Text style={s.modalBtnText}>Continue Shopping</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
       {/* Navbar */}
       <View style={s.nav}>
-        <Text style={s.navBrand}>shop<Text style={{ color: "#e8ff47" }}>.</Text></Text>
+        <Text style={s.navBrand}>shop<Text style={{ color: COLORS.primary }}>.</Text></Text>
         <View style={s.navRight}>
-          <TouchableOpacity style={s.navBtn} onPress={() => navigation.navigate("MyOrders")}>
-            <Text style={s.navBtnText}>Orders</Text>
+          <TouchableOpacity style={s.cartBtn} onPress={() => navigation.navigate("Cart", { cart })}>
+            <Text style={s.cartIcon}>🛒</Text>
+            {cartCount > 0 && (
+              <View style={s.badge}>
+                <Text style={s.badgeText}>{cartCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[s.navBtn, s.cartBtn]}
-          onPress={() => navigation.navigate("Cart", { cart })}
-          >
-            <Text style={s.navBtnText}>🛒 {cartCount > 0 ? cartCount : ""}</Text>
+          <TouchableOpacity onPress={() => navigation.navigate("MyOrders")} style={s.navAction}>
+            <Text style={s.navActionText}>Orders</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={logout}>
             <Text style={s.logoutText}>Logout</Text>
@@ -163,81 +87,95 @@ export default function ProductsScreen({ navigation, route }) {
       </View>
 
       {/* Content */}
-      {loading && <ActivityIndicator style={{ marginTop: 60 }} size="large" color="#e8ff47" />}
-      {!!error  && <Text style={s.errorText}>{error}</Text>}
-
-      {!loading && (
+      {loading ? (
+        <View style={s.center}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : error ? (
+        <View style={s.center}>
+          <Text style={s.errorText}>{error}</Text>
+          <TouchableOpacity onPress={fetchProducts} style={s.retryBtn}>
+            <Text style={s.retryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
         <FlatList
           data={products}
           keyExtractor={(item) => item._id}
-          renderItem={renderProduct}
-          extraData={cart}
+          renderItem={({ item }) => (
+            <ProductCard
+              item={item}
+              onPress={() => navigation.navigate("ProductDetail", { product: item, cart })}
+              onAddPress={() => addToCart(item)}
+              inCart={cart.some(i => i._id === item._id)}
+              cartQty={cart.find(i => i._id === item._id)?.qty}
+            />
+          )}
           numColumns={2}
-          columnWrapperStyle={s.row}
+          columnWrapperStyle={s.listRow}
           contentContainerStyle={s.list}
-          showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <View style={s.header}>
-              <Text style={s.pageTitle}>All Products</Text>
-              <Text style={s.pageSubtitle}>{products.length} items available</Text>
+              <Text style={s.title}>New Arrivals</Text>
+              <Text style={s.subtitle}>Premium mobile collection</Text>
             </View>
           }
         />
       )}
+
+      {/* Success Modal */}
+      <Modal visible={orderDone} transparent animationType="slide">
+        <View style={s.modalOverlay}>
+          <View style={s.modalCard}>
+            <View style={s.successCircle}>
+              <Text style={{fontSize: 32}}>✅</Text>
+            </View>
+            <Text style={s.modalTitle}>Order Confirmed!</Text>
+            <Text style={s.modalSub}>Your purchase was successful.</Text>
+            <TouchableOpacity style={s.modalBtn} onPress={() => setOrderDone(false)}>
+              <Text style={s.modalBtnText}>Back to Shop</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
-  page:    { flex: 1, backgroundColor: "#0a0a0a" },
+  page: { flex: 1, backgroundColor: COLORS.background },
   nav: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: "#1e1e1e", backgroundColor: "#0f0f0f",
+    paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md,
+    backgroundColor: COLORS.background,
   },
-  navBrand:  { fontSize: 20, fontWeight: "700", color: "#fff" },
-  navRight:  { flexDirection: "row", alignItems: "center", gap: 8 },
-  navBtn: {
-    backgroundColor: "#1a1a1a", borderWidth: 1, borderColor: "#2a2a2a",
-    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
+  navBrand: { ...TYPOGRAPHY.h3, color: COLORS.white, fontSize: 24 },
+  navRight: { flexDirection: "row", alignItems: "center", gap: SPACING.md },
+  navAction: { backgroundColor: COLORS.surface, paddingHorizontal: 12, paddingVertical: 6, borderRadius: BORDER_RADIUS.sm },
+  navActionText: { color: COLORS.white, fontSize: 12, fontWeight: '600' },
+  cartBtn: { position: 'relative', padding: 4 },
+  cartIcon: { fontSize: 22 },
+  badge: {
+    position: 'absolute', top: -2, right: -2,
+    backgroundColor: COLORS.primary, width: 16, height: 16,
+    borderRadius: 8, justifyContent: 'center', alignItems: 'center',
   },
-  cartBtn:   { },
-  navBtnText:{ color: "#fff", fontSize: 13, fontWeight: "500" },
-  logoutText:{ color: "#555", fontSize: 13 },
-  header:    { paddingHorizontal: 12, paddingTop: 16, paddingBottom: 8 },
-  pageTitle: { fontSize: 22, fontWeight: "700", color: "#fff" },
-  pageSubtitle:{ fontSize: 13, color: "#555", marginTop: 2 },
-  list:      { paddingHorizontal: 8, paddingBottom: 24 },
-  row:       { justifyContent: "space-between", paddingHorizontal: 4 },
-  card: {
-    width: "48%", backgroundColor: "#141414", borderRadius: 12,
-    borderWidth: 1, borderColor: "#1e1e1e", marginBottom: 12, overflow: "hidden",
-  },
-  cardImg:   { width: "100%", height: 130 },
-  cardImgPlaceholder: {
-    width: "100%", height: 130, backgroundColor: "#1a1a1a",
-    justifyContent: "center", alignItems: "center",
-  },
-  cardBody:  { padding: 10 },
-  cardTitle: { fontSize: 14, fontWeight: "600", color: "#fff", marginBottom: 4 },
-  cardDesc:  { fontSize: 12, color: "#555", marginBottom: 8, lineHeight: 16 },
-  priceRow:  { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 4, marginBottom: 4 },
-  price:     { fontSize: 16, fontWeight: "700", color: "#e8ff47" },
-  mrp:       { fontSize: 12, color: "#444", textDecorationLine: "line-through" },
-  discountBadge: { backgroundColor: "#0f2a00", borderRadius: 100, paddingHorizontal: 6, paddingVertical: 2 },
-  discountText:  { fontSize: 11, color: "#8abf00", fontWeight: "600" },
-  stock:     { fontSize: 11, color: "#444", marginBottom: 8 },
-  addBtn: {
-    backgroundColor: "#e8ff47", borderRadius: 8, padding: 9, alignItems: "center",
-  },
-  addBtnDisabled: { opacity: 0.35 },
-  addBtnText:     { color: "#0a0a0a", fontWeight: "700", fontSize: 13 },
-  errorText: { color: "#ff6b6b", textAlign: "center", marginTop: 40, fontSize: 14 },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.8)", justifyContent: "center", alignItems: "center" },
-  modalCard:    { backgroundColor: "#141414", borderRadius: 16, padding: 32, alignItems: "center", borderWidth: 1, borderColor: "#2a2a2a", width: "80%" },
-  modalIcon:    { fontSize: 48, marginBottom: 12 },
-  modalTitle:   { fontSize: 22, fontWeight: "700", color: "#fff", marginBottom: 8 },
-  modalSub:     { fontSize: 14, color: "#666", textAlign: "center", marginBottom: 24 },
-  modalBtn:     { backgroundColor: "#e8ff47", borderRadius: 10, paddingHorizontal: 28, paddingVertical: 12 },
-  modalBtnText: { color: "#0a0a0a", fontWeight: "700", fontSize: 15 },
+  badgeText: { color: COLORS.black, fontSize: 10, fontWeight: '800' },
+  logoutText: { color: COLORS.textDim, fontSize: 12 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: { padding: SPACING.lg },
+  title: { ...TYPOGRAPHY.h2, color: COLORS.white },
+  subtitle: { ...TYPOGRAPHY.bodySmall, color: COLORS.textMuted },
+  list: { paddingHorizontal: SPACING.md, paddingBottom: SPACING.xl },
+  listRow: { justifyContent: 'space-between' },
+  errorText: { color: COLORS.error, marginBottom: 16 },
+  retryBtn: { padding: 10, backgroundColor: COLORS.surface, borderRadius: 8 },
+  retryText: { color: COLORS.primary, fontWeight: '600' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' },
+  modalCard: { backgroundColor: COLORS.surface, borderRadius: BORDER_RADIUS.xl, padding: 32, alignItems: 'center', width: '85%', borderWidth: 1, borderColor: COLORS.border },
+  successCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(0,200,83,0.1)', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+  modalTitle: { ...TYPOGRAPHY.h2, color: COLORS.white, marginBottom: 8 },
+  modalSub: { ...TYPOGRAPHY.bodySmall, color: COLORS.textMuted, textAlign: 'center', marginBottom: 24 },
+  modalBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 32, paddingVertical: 14, borderRadius: BORDER_RADIUS.md },
+  modalBtnText: { color: COLORS.black, fontWeight: '700' },
 });
